@@ -1,5 +1,44 @@
 # GatewayHub — İlerleme Takibi (Faz 0)
 
+## FAZ 0 TAMAM
+
+T1-T29'un tamamı `[x]`. PRD §8'deki Faz 0 başarı kriteri tek cümlede üç parçadan
+oluşuyor; her biri aşağıda kanıtıyla:
+
+1. **"Abdullah bir hafta boyunca günlük task takibini ClickUp arayüzü yerine
+   GatewayHub'tan yapıyor (yazma gerektiğinde ClickUp'a geçmek serbest)"** —
+   bunun teknik önkoşulları eksiksiz: ClickUp'tan gerçek zamanlı okuma
+   (backfill T11 + poll `fetch_changes` T13, worker T16), liste (T21) ve board
+   (T22) görünümleri, task detay paneli (T23), filtreler (T17) ve klavye
+   navigasyonu (T24) hepsi çalışır ve gerçek tarayıcı koşularıyla doğrulanmış
+   durumda. **Doğrulanamayan kısım:** "bir hafta boyunca fiilen kullanma"
+   deneyimsel bir kriterdir — bunu bir agent'ın kod/test incelemesiyle
+   kanıtlaması mümkün değil, yalnızca Abdullah'ın gerçek kullanımıyla
+   doğrulanabilir. Teknik temel hazır; kullanım kanıtı insana ait.
+2. **"En az bir teammate ikinci kullanıcı olarak eklenip kendi görünümünü
+   kullanabiliyor"** — `POST /api/users` (T8, admin-only) yeni kullanıcı
+   ekliyor, `must_change_password=True` ile başlıyor (T7); `require_active_user`
+   ile korunan tüm görünüm endpoint'leri (T17-T19) herhangi bir member
+   hesabıyla erişilebilir, admin şart değil. `backend/tests/test_users.py`,
+   `test_auth.py` bunu test ediyor. Aynı şekilde deneyimsel doğrulama
+   (gerçek bir teammate'in gerçekten eklenip kullanması) insana ait.
+3. **"S1/S2'nin okuma tarafı sorunsuz"** — S1 (sabah rutini: atanmış+aktif
+   task'ların flat liste görünümü, subtask'lar parent'a gömülü değil):
+   `TasksListPage` + `assignee`/`status`/`has_parent` filtreleri (T17, T21),
+   subtask'lar bağımsız satır (`↳` göstergesi). S2'nin okuma tarafı (board'da
+   subtask'ın bağımsız kart olarak görünmesi, parent rozetiyle): T22 —
+   sürükle-bırak (yazma) kısmı PRD'nin kendi notuyla ("okuma tarafı") ve
+   GOAL.md guardrail'iyle ("write-back yok") bilinçli olarak kapsam dışı.
+
+**Kapsam koruması doğrulandı:** `providers/base.py`'de `parse_webhook`/
+`push_change` hâlâ `NotImplementedError`; kod tabanında write-back, AI,
+webhook, WebSocket veya plugin koduna dair hiçbir iz yok (T28'de tek tek
+kontrol edildi). Kalite geçişi (T29): 145/145 test yeşil, ruff+mypy+tsc temiz,
+coverage %98 (hedef ≥%80).
+
+**Faz 1'e kendiliğinden başlanmıyor** — GOAL.md'nin kuralı gereği burada
+duruluyor.
+
 Faz 0 kapsamı PRD Bölüm 8'e göre küçük tasklara bölünmüştür. Her çağrıda `[ ]`
 durumundaki en üstteki task tamamlanır.
 
@@ -61,4 +100,5 @@ durumundaki en üstteki task tamamlanır.
   - Kök dizinde `setup.sh` (çalıştırılabilir, `set -euo pipefail`): `.env` yoksa `.env.example`'dan kopyalıyor ve `SECRET_KEY`'i `openssl rand -hex 32` (yoksa `python3 secrets.token_hex`, o da yoksa `/dev/urandom`) ile üretilen rastgele değerle değiştiriyor — `.env` zaten varsa dokunmuyor (mevcut kurulumu ezmeme). `docker compose up -d --build` sonrası `.env`'deki `APP_PORT`'u okuyup `${url}/healthz`'i 2 saniye aralıkla (60 deneme = 2 dakika) polluyor, hazır olunca panel URL'ini yazdırıyor; zaman aşımında `docker compose logs -f app migrate` ipucuyla hata kodu 1 ile çıkıyor. Docker daemon'a bu sandbox'ta erişim yok — script'in `bash -n` sözdizim kontrolü ve `.env` üretim/sed mantığı (rastgele secret enjeksiyonu) izole olarak doğrulandı, gerçek `docker compose up` koşusu bir sonraki Docker'lı ortamda test edilmeli (T26'daki notla aynı sınırlama). README'ye tek satırlık referans eklendi (kurulum bölümü hâlâ ≤10 satır).
 - [x] T28: README finalize (≤10 satır kurulum, `setup.sh` seçeneğine referans), Faz 0 kapsam kontrolü.
   - README kurulum bölümü 8 satır (`cp .env.example .env && docker compose up` akışı + `setup.sh` referansı tek satırda) — PRD/GOAL'daki "≤10 satır" sınırı içinde. Faz 0 kapsam kontrolü (PRD §8): ClickUp read-only adapter backfill+poll (T10-T14, webhook yok — `parse_webhook`/`push_change` hâlâ `NotImplementedError`, `providers/base.py`), yorumların okunması (T12), canonical model+Postgres (T2-T6), çoklu kullanıcı auth+bootstrap admin+panelden kullanıcı ekleme (T7-T8), liste+board görünümleri ve subtaskların bağımsız render'ı (T21-T22), temel filtreler (T17), keyboard gezinme (T24), Settings temel sayfası (T15/T25), Docker Compose tek komut kurulum (T26-T27) — hepsi mevcut ve `[x]`. Kapsam dışı bırakılanlar (her türlü yazma, AI, webhook) kodda hiçbir yerde uygulanmamış; T22/T24'te bilinçli olarak atlandığı ayrıca not düşülmüştü. Faz 0 tamamlanmadan Faz 1'e ait hiçbir şey (outbound queue, optimistic UI, WebSocket/polling canlı güncelleme) eklenmedi.
-- [ ] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
+- [x] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
+  - Gerçek Postgres 16 + Redis 7'ye karşı çalıştırıldı (mock değil): `pytest` → 145/145 yeşil; `ruff check .` → temiz; `mypy .` (strict) → 51 dosya, hata yok. Coverage (`app`+`providers`): **%98** (836 satır, 16 kaçırılan — kalanlar `main.py`'nin frontend-yok fallback dalı ve `db.py`'nin engine-oluşturma satırları gibi test edilmesi pratik olmayan yerler), GOAL.md'deki ≥%80 hedefinin üzerinde. Frontend: `tsc -b` temiz, `npm run lint` (oxlint) temiz; birim test framework'ü kurulmadı (frontend için GOAL.md sadece `tsc --noEmit` temizliği istiyor, T20-T25'te her ekran zaten gerçek headless tarayıcı koşusuyla doğrulanmıştı). Faz 0 başarı kriteri (PRD §8) detaylı kontrolü dosyanın en üstündeki `## FAZ 0 TAMAM` bölümünde.
