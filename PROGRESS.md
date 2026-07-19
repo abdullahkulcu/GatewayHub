@@ -49,7 +49,8 @@ durumundaki en üstteki task tamamlanır.
 - [ ] T24: Frontend — Keyboard-first navigasyon (j/k, statü/assignee hızlı değişim, command palette Cmd/Ctrl+K).
 - [ ] T25: Frontend — Settings sayfası (provider token, sync kapsamı, poll aralığı, kullanıcı yönetimi UI).
 - [ ] T26: Docker Compose — tam entegrasyon (app: API+UI static serve, worker, postgres, redis) tek komutla ayağa kalkma; Dockerfile'lar.
-- [ ] T20b: `docs/INTEGRATIONS.md` — kullanıcı isteği: ClickUp (Faz 0'da mevcut) entegrasyonunun nasıl kurulacağını anlatan doküman (Personal API Token nasıl alınır, hangi workspace/space/list ID'leri gerekli, panelde nereye girilir). Jira, Faz 2'ye kadar mevcut değil — dokümanda bu açıkça belirtilir, hayali adımlar yazılmaz.
+- [x] T20b: `docs/INTEGRATIONS.md` — kullanıcı isteği: ClickUp (Faz 0'da mevcut) entegrasyonunun nasıl kurulacağını anlatan doküman (Personal API Token nasıl alınır, hangi workspace/space/list ID'leri gerekli, panelde nereye girilir). Jira, Faz 2'ye kadar mevcut değil — dokümanda bu açıkça belirtilir, hayali adımlar yazılmaz.
+  - Settings UI (T25) henüz yok, bu yüzden doküman gerçek `/api/settings/*` endpoint'lerini `curl` örnekleriyle anlatıyor — var olmayan bir panel akışını anlatmıyor. T25 tamamlandığında doküman panel adımlarına güncellenmeli.
 - [ ] T27: `setup.sh` — kullanıcı isteği: makineye indirip tek script ile kurulum (`.env` yoksa `.env.example`'dan oluştur + rastgele `SECRET_KEY` üret + `docker compose up -d --build` + hazır olduğunda panel URL'ini yazdır). README'deki `cp .env.example .env && docker compose up` akışının yerini almaz, ona ek pratik bir kısayoldur.
 - [ ] T28: README finalize (≤10 satır kurulum, `setup.sh` seçeneğine referans), Faz 0 kapsam kontrolü.
 - [ ] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
