@@ -13,6 +13,7 @@ from providers.base import (
     SyncBatch,
     TaskProvider,
 )
+from providers.rate_limit import TokenBucket
 
 CLICKUP_API_BASE = "https://api.clickup.com/api/v2"
 
@@ -89,11 +90,16 @@ class ClickUpClient:
     """
 
     def __init__(
-        self, api_token: str, base_url: str = CLICKUP_API_BASE, timeout: float = 10.0
+        self,
+        api_token: str,
+        base_url: str = CLICKUP_API_BASE,
+        timeout: float = 10.0,
+        rate_limiter: TokenBucket | None = None,
     ) -> None:
         self._client = httpx.Client(
             base_url=base_url, headers={"Authorization": api_token}, timeout=timeout
         )
+        self._rate_limiter = rate_limiter
 
     def close(self) -> None:
         self._client.close()
@@ -110,6 +116,8 @@ class ClickUpClient:
         self.close()
 
     def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        if self._rate_limiter is not None:
+            self._rate_limiter.acquire()
         response = self._client.get(path, params=params)
         if response.status_code == 401:
             raise ClickUpAuthError("ClickUp rejected the configured API token")

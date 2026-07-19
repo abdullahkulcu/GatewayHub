@@ -5,6 +5,7 @@ import pytest
 import respx
 
 from providers.clickup import CLICKUP_API_BASE, ClickUpClient
+from providers.rate_limit import TokenBucket
 
 
 def test_verify_token_true_on_success() -> None:
@@ -184,3 +185,25 @@ def test_list_comments_for_task() -> None:
             comments = client.list_comments("t1")
 
         assert comments == [{"id": "c1", "comment_text": "hi"}]
+
+
+def test_requests_go_through_rate_limiter_when_configured() -> None:
+    calls: list[float] = []
+    limiter = TokenBucket(rate_per_minute=60, sleep=lambda s: None)
+    limiter.acquire = lambda tokens=1.0: calls.append(tokens)  # type: ignore[method-assign]
+
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/team").mock(return_value=httpx.Response(200, json={"teams": []}))
+
+        with ClickUpClient("pk_token", rate_limiter=limiter) as client:
+            client.list_workspaces()
+
+    assert calls == [1.0]
+
+
+def test_no_rate_limiting_by_default() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/team").mock(return_value=httpx.Response(200, json={"teams": []}))
+
+        with ClickUpClient("pk_token") as client:
+            client.list_workspaces()  # must not raise/block without a limiter configured
