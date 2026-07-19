@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.auth import router as auth_router
+from app.api.settings import router as settings_router
 from app.api.users import router as users_router
 from app.bootstrap import ensure_bootstrap_admin
 from app.config import get_settings
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="GatewayHub", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(settings_router)
 
 
 @app.get("/healthz")
