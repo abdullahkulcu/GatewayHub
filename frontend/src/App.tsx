@@ -4,6 +4,7 @@ import { useAuth } from './shared/useAuth'
 import { LoginPage } from './pages/LoginPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { TasksListPage } from './pages/TasksListPage'
+import { BoardPage } from './pages/BoardPage'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { token } = useAuth()
@@ -28,6 +29,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <TasksListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/board"
+        element={
+          <ProtectedRoute>
+            <BoardPage />
           </ProtectedRoute>
         }
       />
