@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -9,6 +10,8 @@ from app.models.setting import Setting
 CLICKUP_TOKEN_KEY = "clickup_api_token"
 POLL_INTERVAL_KEY = "poll_interval_seconds"
 SYNC_SCOPE_KEY = "sync_scope"
+LAST_SYNCED_AT_KEY = "clickup_last_synced_at"
+LAST_SYNC_ERROR_KEY = "clickup_last_sync_error"
 
 DEFAULT_POLL_INTERVAL_SECONDS = 60
 
@@ -65,4 +68,28 @@ def get_sync_scope(db: Session) -> dict[str, Any] | None:
 def set_sync_scope(db: Session, workspace_id: str, list_ids: list[str]) -> None:
     row = _get_or_create(db, SYNC_SCOPE_KEY)
     row.value = json.dumps({"workspace_id": workspace_id, "list_ids": list_ids})
+    db.commit()
+
+
+def get_last_synced_at(db: Session) -> datetime | None:
+    row = db.get(Setting, LAST_SYNCED_AT_KEY)
+    if row is None or row.value is None:
+        return None
+    return datetime.fromisoformat(row.value)
+
+
+def set_last_synced_at(db: Session, when: datetime) -> None:
+    row = _get_or_create(db, LAST_SYNCED_AT_KEY)
+    row.value = when.isoformat()
+    db.commit()
+
+
+def get_last_sync_error(db: Session) -> str | None:
+    row = db.get(Setting, LAST_SYNC_ERROR_KEY)
+    return row.value if row is not None else None
+
+
+def set_last_sync_error(db: Session, message: str | None) -> None:
+    row = _get_or_create(db, LAST_SYNC_ERROR_KEY)
+    row.value = message
     db.commit()
