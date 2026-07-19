@@ -1,8 +1,11 @@
+from datetime import UTC, datetime
+
 import httpx
 import respx
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app import settings_store
 from app.models.user import User, UserRole
 from app.security import hash_password
 from providers.clickup import CLICKUP_API_BASE
@@ -198,3 +201,63 @@ def test_list_clickup_lists_flattens_folders_and_folderless(
         {"id": "l1", "name": "Backlog", "space_name": "Eng", "folder_name": None},
         {"id": "l2", "name": "Sprint 1", "space_name": "Eng", "folder_name": "Sprint"},
     ]
+
+
+def test_sync_status_before_any_sync_has_run(client: TestClient, db_session: Session) -> None:
+    _create_admin(db_session)
+    headers = _auth_headers(client)
+
+    response = client.get("/api/settings/sync-status", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "last_synced_at": None,
+        "next_poll_at": None,
+        "last_sync_error": None,
+        "poll_interval_seconds": 60,
+    }
+
+
+def test_sync_status_reflects_last_sync_and_computes_next_poll(
+    client: TestClient, db_session: Session
+) -> None:
+    _create_admin(db_session)
+    headers = _auth_headers(client)
+    when = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
+    settings_store.set_last_synced_at(db_session, when)
+    settings_store.set_poll_interval_seconds(db_session, 120)
+
+    response = client.get("/api/settings/sync-status", headers=headers)
+
+    body = response.json()
+    assert body["last_synced_at"] == "2024-01-15T12:00:00Z"
+    assert body["next_poll_at"] == "2024-01-15T12:02:00Z"
+    assert body["poll_interval_seconds"] == 120
+
+
+def test_sync_status_surfaces_last_error(client: TestClient, db_session: Session) -> None:
+    _create_admin(db_session)
+    headers = _auth_headers(client)
+    settings_store.set_last_sync_error(db_session, "ClickUp rejected the configured API token")
+
+    response = client.get("/api/settings/sync-status", headers=headers)
+
+    assert response.json()["last_sync_error"] == "ClickUp rejected the configured API token"
+
+
+def test_sync_status_requires_admin(client: TestClient, db_session: Session) -> None:
+    member = User(
+        email="member@example.com",
+        password_hash=hash_password("hunter2"),
+        must_change_password=False,
+    )
+    db_session.add(member)
+    db_session.flush()
+    login = client.post(
+        "/api/auth/login", json={"email": "member@example.com", "password": "hunter2"}
+    )
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    response = client.get("/api/settings/sync-status", headers=headers)
+
+    assert response.status_code == 403

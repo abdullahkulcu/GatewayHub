@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,6 +33,13 @@ class SetClickUpTokenRequest(BaseModel):
 
 class SetPollIntervalRequest(BaseModel):
     poll_interval_seconds: int = Field(ge=1)
+
+
+class SyncStatusOut(BaseModel):
+    last_synced_at: datetime | None
+    next_poll_at: datetime | None
+    last_sync_error: str | None
+    poll_interval_seconds: int
 
 
 def _settings_view(db: Session) -> SettingsOut:
@@ -149,3 +157,24 @@ def list_clickup_lists(
     token = _require_configured_token(db)
     with ClickUpClient(token) as client:
         return _flatten_lists_for_workspace(client, workspace_id)
+
+
+@router.get("/sync-status", response_model=SyncStatusOut)
+def get_sync_status(
+    db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> SyncStatusOut:
+    """Read-side sync status (FR-SYNC-5/FR-SET-4). No pending/failed write
+    counts or rate-limit status here — Phase 0 has no write-back queue."""
+    last_synced_at = settings_store.get_last_synced_at(db)
+    poll_interval_seconds = settings_store.get_poll_interval_seconds(db)
+    next_poll_at = (
+        last_synced_at + timedelta(seconds=poll_interval_seconds)
+        if last_synced_at is not None
+        else None
+    )
+    return SyncStatusOut(
+        last_synced_at=last_synced_at,
+        next_poll_at=next_poll_at,
+        last_sync_error=settings_store.get_last_sync_error(db),
+        poll_interval_seconds=poll_interval_seconds,
+    )
