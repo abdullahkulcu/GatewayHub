@@ -6,9 +6,16 @@ interface BoardColumnProps {
   tasks: TaskSummary[]
   taskTitleById: Map<string, string>
   usersById: Map<string, string>
+  onSelect: (taskId: string) => void
 }
 
-export function BoardColumn({ status, tasks, taskTitleById, usersById }: BoardColumnProps) {
+export function BoardColumn({
+  status,
+  tasks,
+  taskTitleById,
+  usersById,
+  onSelect,
+}: BoardColumnProps) {
   return (
     <div className="flex w-72 shrink-0 flex-col gap-2">
       <div className="flex items-center justify-between px-1 text-xs font-medium tracking-wide text-neutral-400 uppercase">
@@ -22,6 +29,7 @@ export function BoardColumn({ status, tasks, taskTitleById, usersById }: BoardCo
             task={task}
             parentTitle={task.parent_id ? taskTitleById.get(task.parent_id) : undefined}
             usersById={usersById}
+            onSelect={onSelect}
           />
         ))}
         {tasks.length === 0 && <p className="px-1 text-xs text-neutral-600">No tasks</p>}

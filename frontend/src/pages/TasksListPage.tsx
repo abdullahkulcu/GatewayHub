@@ -2,12 +2,15 @@ import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { TaskFilters } from '../components/TaskFilters'
 import { TaskTable } from '../components/TaskTable'
+import { TaskDetailPanel } from '../components/TaskDetailPanel'
 import { useTasks, useUsersDirectory } from '../shared/queries'
+import { useSelectedTask } from '../shared/useSelectedTask'
 
 const DEFAULT_SORT = 'title'
 
 export function TasksListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { selectedTaskId, select, clear } = useSelectedTask()
 
   const assignee = searchParams.get('assignee') ?? undefined
   const status = searchParams.get('status') ?? undefined
@@ -57,7 +60,11 @@ export function TasksListPage() {
           usersById={usersById}
           sort={sort}
           onSort={handleSort}
+          onSelect={select}
         />
+      )}
+      {selectedTaskId && (
+        <TaskDetailPanel taskId={selectedTaskId} usersById={usersById} onClose={clear} />
       )}
     </AppShell>
   )

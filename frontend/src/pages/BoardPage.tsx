@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { AppShell } from '../components/AppShell'
 import { BoardColumn } from '../components/BoardColumn'
+import { TaskDetailPanel } from '../components/TaskDetailPanel'
 import { useTasks, useUsersDirectory } from '../shared/queries'
+import { useSelectedTask } from '../shared/useSelectedTask'
 import type { TaskSummary } from '../shared/types'
 
 const CATEGORY_ORDER: Record<string, number> = {
@@ -30,6 +32,7 @@ export function BoardPage() {
   const [showSubtasks, setShowSubtasks] = useState(true)
   const tasksQuery = useTasks({ sort: 'title' })
   const usersQuery = useUsersDirectory()
+  const { selectedTaskId, select, clear } = useSelectedTask()
 
   const allTasks = tasksQuery.data ?? []
   const visibleTasks = showSubtasks ? allTasks : allTasks.filter((t) => t.parent_id === null)
@@ -62,9 +65,13 @@ export function BoardPage() {
             tasks={visibleTasks.filter((t) => t.status === status)}
             taskTitleById={taskTitleById}
             usersById={usersById}
+            onSelect={select}
           />
         ))}
       </div>
+      {selectedTaskId && (
+        <TaskDetailPanel taskId={selectedTaskId} usersById={usersById} onClose={clear} />
+      )}
     </AppShell>
   )
 }

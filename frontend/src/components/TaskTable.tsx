@@ -5,6 +5,7 @@ interface TaskTableProps {
   usersById: Map<string, string>
   sort: string
   onSort: (column: string) => void
+  onSelect: (taskId: string) => void
 }
 
 const COLUMNS: { key: string; label: string; sortable: boolean }[] = [
@@ -29,7 +30,7 @@ const STATUS_CATEGORY_COLOR: Record<string, string> = {
   cancelled: 'bg-red-950 text-red-300',
 }
 
-export function TaskTable({ tasks, usersById, sort, onSort }: TaskTableProps) {
+export function TaskTable({ tasks, usersById, sort, onSort, onSelect }: TaskTableProps) {
   if (tasks.length === 0) {
     return <p className="text-sm text-neutral-500">No tasks match the current filters.</p>
   }
@@ -58,7 +59,11 @@ export function TaskTable({ tasks, usersById, sort, onSort }: TaskTableProps) {
       </thead>
       <tbody>
         {tasks.map((task) => (
-          <tr key={task.id} className="border-b border-neutral-900 hover:bg-neutral-900/50">
+          <tr
+            key={task.id}
+            onClick={() => onSelect(task.id)}
+            className="cursor-pointer border-b border-neutral-900 hover:bg-neutral-900/50"
+          >
             <td className="px-3 py-2">
               {task.parent_id && <span className="mr-1 text-neutral-500">↳</span>}
               {task.title}
