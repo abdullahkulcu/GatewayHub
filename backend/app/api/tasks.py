@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_active_user
 from app.db import get_db
+from app.models.comment import Comment
 from app.models.task import StatusCategory, Task, WriteState
 from app.models.user import User
 
@@ -40,7 +41,23 @@ class TaskOut(BaseModel):
     due_date: datetime | None
     tags: list[str] | None
     write_state: WriteState
+    provider_updated_at: datetime | None
     last_synced_at: datetime | None
+    sync_version: int
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    author: str
+    body: str
+    created_at: datetime
+
+
+class TaskDetailOut(TaskOut):
+    comments: list[CommentOut]
+    subtasks: list[TaskOut]
 
 
 @router.get("", response_model=list[TaskOut])
@@ -73,3 +90,28 @@ def list_tasks(
     query = query.order_by(column.desc() if descending else column.asc())
 
     return list(db.execute(query).scalars().all())
+
+
+@router.get("/{task_id}", response_model=TaskDetailOut)
+def get_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_active_user),
+) -> TaskDetailOut:
+    task = db.get(Task, task_id)
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    comments = db.execute(
+        select(Comment).where(Comment.task_id == task_id).order_by(Comment.created_at)
+    ).scalars().all()
+    subtasks = db.execute(
+        select(Task).where(Task.parent_id == task_id).order_by(Task.title)
+    ).scalars().all()
+
+    base = TaskOut.model_validate(task)
+    return TaskDetailOut(
+        **base.model_dump(),
+        comments=[CommentOut.model_validate(c) for c in comments],
+        subtasks=[TaskOut.model_validate(s) for s in subtasks],
+    )
