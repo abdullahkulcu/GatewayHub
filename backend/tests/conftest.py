@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -44,7 +44,7 @@ def db_connection() -> Iterator[Connection]:
 
 @pytest.fixture
 def db_session(db_connection: Connection) -> Iterator[Session]:
-    session = sessionmaker(bind=db_connection)()
+    session = Session(bind=db_connection, join_transaction_mode="create_savepoint")
     try:
         yield session
     finally:
