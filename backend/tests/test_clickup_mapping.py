@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from providers.base import StatusCategory
-from providers.clickup import clickup_task_to_provider_task
+from providers.clickup import clickup_comment_to_provider_comment, clickup_task_to_provider_task
 
 
 def _raw_task(**overrides: object) -> dict[str, object]:
@@ -93,3 +93,43 @@ def test_raw_payload_is_preserved() -> None:
     task = clickup_task_to_provider_task(raw)
 
     assert task.raw == raw
+
+
+def test_comment_maps_username_and_comment_text() -> None:
+    comment = clickup_comment_to_provider_comment(
+        "t1",
+        {
+            "id": "c1",
+            "comment_text": "Looks good",
+            "user": {"username": "jane", "email": "jane@example.com"},
+            "date": "1700000000000",
+        },
+    )
+
+    assert comment.provider_task_id == "t1"
+    assert comment.provider_comment_id == "c1"
+    assert comment.author == "jane"
+    assert comment.body == "Looks good"
+    assert comment.created_at == datetime.fromtimestamp(1700000000, tz=UTC)
+
+
+def test_comment_falls_back_to_email_when_no_username() -> None:
+    comment = clickup_comment_to_provider_comment(
+        "t1", {"id": "c1", "comment_text": "hi", "user": {"email": "jane@example.com"}}
+    )
+
+    assert comment.author == "jane@example.com"
+
+
+def test_comment_falls_back_to_unknown_author_when_no_user() -> None:
+    comment = clickup_comment_to_provider_comment("t1", {"id": "c1", "comment_text": "hi"})
+
+    assert comment.author == "unknown"
+
+
+def test_comment_body_falls_back_to_comment_parts_when_no_comment_text() -> None:
+    comment = clickup_comment_to_provider_comment(
+        "t1", {"id": "c1", "comment": [{"text": "Hello "}, {"text": "world"}]}
+    )
+
+    assert comment.body == "Hello world"

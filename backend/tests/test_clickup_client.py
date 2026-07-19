@@ -143,3 +143,17 @@ def test_list_tasks_stops_on_empty_page_even_if_last_page_flag_says_more() -> No
             tasks = client.list_tasks("l1")
 
         assert [t["id"] for t in tasks] == ["t1"]
+
+
+def test_list_comments_for_task() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/task/t1/comment").mock(
+            return_value=httpx.Response(
+                200, json={"comments": [{"id": "c1", "comment_text": "hi"}]}
+            )
+        )
+
+        with ClickUpClient("pk_token") as client:
+            comments = client.list_comments("t1")
+
+        assert comments == [{"id": "c1", "comment_text": "hi"}]

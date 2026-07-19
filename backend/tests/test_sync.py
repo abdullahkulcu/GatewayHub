@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
+from app.models.comment import Comment
 from app.models.task import Task
 from app.models.user import User
 from app.sync import upsert_sync_batch
-from providers.base import ProviderTask, StatusCategory, SyncBatch
+from providers.base import ProviderComment, ProviderTask, StatusCategory, SyncBatch
 
 
 def test_inserts_new_task(db_session: Session) -> None:
@@ -103,3 +106,78 @@ def test_parent_outside_batch_scope_leaves_parent_id_null(db_session: Session) -
 
     child = db_session.query(Task).filter_by(provider_task_id="child-1").one()
     assert child.parent_id is None
+
+
+def test_upserts_comments_for_their_task(db_session: Session) -> None:
+    batch = SyncBatch(
+        tasks=[ProviderTask(provider_task_id="t1", title="Task", status="open")],
+        comments=[
+            ProviderComment(
+                provider_task_id="t1",
+                provider_comment_id="c1",
+                author="jane",
+                body="LGTM",
+                created_at=datetime.now(UTC),
+            )
+        ],
+    )
+
+    upsert_sync_batch(db_session, "clickup", batch)
+
+    task = db_session.query(Task).filter_by(provider_task_id="t1").one()
+    comment = db_session.query(Comment).filter_by(provider_comment_id="c1").one()
+    assert comment.task_id == task.id
+    assert comment.author == "jane"
+    assert comment.body == "LGTM"
+
+
+def test_comment_upsert_is_idempotent(db_session: Session) -> None:
+    batch = SyncBatch(
+        tasks=[ProviderTask(provider_task_id="t1", title="Task", status="open")],
+        comments=[
+            ProviderComment(
+                provider_task_id="t1",
+                provider_comment_id="c1",
+                author="jane",
+                body="First edit",
+                created_at=datetime.now(UTC),
+            )
+        ],
+    )
+    upsert_sync_batch(db_session, "clickup", batch)
+
+    batch_v2 = SyncBatch(
+        tasks=[ProviderTask(provider_task_id="t1", title="Task", status="open")],
+        comments=[
+            ProviderComment(
+                provider_task_id="t1",
+                provider_comment_id="c1",
+                author="jane",
+                body="Edited",
+                created_at=datetime.now(UTC),
+            )
+        ],
+    )
+    upsert_sync_batch(db_session, "clickup", batch_v2)
+
+    comments = db_session.query(Comment).filter_by(provider_comment_id="c1").all()
+    assert len(comments) == 1
+    assert comments[0].body == "Edited"
+
+
+def test_comment_for_task_outside_batch_scope_is_skipped(db_session: Session) -> None:
+    batch = SyncBatch(
+        comments=[
+            ProviderComment(
+                provider_task_id="not-in-batch",
+                provider_comment_id="c1",
+                author="jane",
+                body="orphaned",
+                created_at=datetime.now(UTC),
+            )
+        ]
+    )
+
+    upsert_sync_batch(db_session, "clickup", batch)
+
+    assert db_session.query(Comment).count() == 0

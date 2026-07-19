@@ -7,6 +7,7 @@ import httpx
 
 from providers.base import (
     ProviderCapabilities,
+    ProviderComment,
     ProviderTask,
     StatusCategory,
     SyncBatch,
@@ -55,6 +56,24 @@ def clickup_task_to_provider_task(raw: dict[str, Any]) -> ProviderTask:
         tags=[t["name"] for t in raw.get("tags", []) if t.get("name")],
         provider_updated_at=_parse_epoch_millis(raw.get("date_updated")),
         raw=raw,
+    )
+
+
+def clickup_comment_to_provider_comment(
+    provider_task_id: str, raw: dict[str, Any]
+) -> ProviderComment:
+    user = raw.get("user") or {}
+    author = user.get("username") or user.get("email") or "unknown"
+    body = raw.get("comment_text") or "".join(
+        part.get("text", "") for part in raw.get("comment", [])
+    )
+    created_at = _parse_epoch_millis(raw.get("date")) or datetime.now(UTC)
+    return ProviderComment(
+        provider_task_id=provider_task_id,
+        provider_comment_id=raw["id"],
+        author=author,
+        body=body,
+        created_at=created_at,
     )
 
 
@@ -148,6 +167,11 @@ class ClickUpClient:
             page += 1
         return tasks
 
+    def list_comments(self, task_id: str) -> list[dict[str, Any]]:
+        data = self._get(f"/task/{task_id}/comment")
+        comments: list[dict[str, Any]] = data.get("comments", [])
+        return comments
+
 
 class ClickUpProvider(TaskProvider):
     def __init__(self, client: ClickUpClient, list_ids: Sequence[str]) -> None:
@@ -155,12 +179,18 @@ class ClickUpProvider(TaskProvider):
         self._list_ids = list(list_ids)
 
     def backfill(self) -> SyncBatch:
-        tasks = [
-            clickup_task_to_provider_task(raw_task)
+        raw_tasks = [
+            raw_task
             for list_id in self._list_ids
             for raw_task in self._client.list_tasks(list_id)
         ]
-        return SyncBatch(tasks=tasks)
+        tasks = [clickup_task_to_provider_task(raw_task) for raw_task in raw_tasks]
+        comments = [
+            clickup_comment_to_provider_comment(raw_task["id"], raw_comment)
+            for raw_task in raw_tasks
+            for raw_comment in self._client.list_comments(raw_task["id"])
+        ]
+        return SyncBatch(tasks=tasks, comments=comments)
 
     def fetch_changes(self, since: datetime) -> SyncBatch:
         raise NotImplementedError("Incremental ClickUp sync lands in T13")

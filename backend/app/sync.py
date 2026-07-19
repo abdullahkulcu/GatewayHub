@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.models.comment import Comment
 from app.models.task import Task
 from app.models.user import User
 from providers.base import SyncBatch
@@ -70,5 +71,27 @@ def upsert_sync_batch(db: Session, provider: str, batch: SyncBatch) -> None:
             .where(Task.id == id_by_provider_task_id[provider_task.provider_task_id])
             .values(parent_id=parent_id)
         )
+
+    for provider_comment in batch.comments:
+        task_id = id_by_provider_task_id.get(provider_comment.provider_task_id)
+        if task_id is None:
+            continue
+
+        existing_comment = db.execute(
+            select(Comment).where(
+                Comment.task_id == task_id,
+                Comment.provider_comment_id == provider_comment.provider_comment_id,
+            )
+        ).scalar_one_or_none()
+
+        if existing_comment is None:
+            existing_comment = Comment(
+                task_id=task_id, provider_comment_id=provider_comment.provider_comment_id
+            )
+            db.add(existing_comment)
+
+        existing_comment.author = provider_comment.author
+        existing_comment.body = provider_comment.body
+        existing_comment.created_at = provider_comment.created_at
 
     db.commit()

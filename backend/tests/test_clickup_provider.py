@@ -39,6 +39,12 @@ def test_backfill_aggregates_tasks_across_lists() -> None:
                 },
             )
         )
+        mock.get("/task/t1/comment").mock(
+            return_value=httpx.Response(200, json={"comments": []})
+        )
+        mock.get("/task/t2/comment").mock(
+            return_value=httpx.Response(200, json={"comments": []})
+        )
 
         with ClickUpClient("pk_token") as client:
             provider = ClickUpProvider(client, ["l1", "l2"])
@@ -46,6 +52,47 @@ def test_backfill_aggregates_tasks_across_lists() -> None:
 
         assert {t.provider_task_id for t in batch.tasks} == {"t1", "t2"}
         assert batch.comments == []
+
+
+def test_backfill_includes_comments_per_task() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/list/l1/task", params={"page": "0"}).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "tasks": [
+                        {"id": "t1", "name": "Task 1", "status": {"status": "open"}}
+                    ],
+                    "last_page": True,
+                },
+            )
+        )
+        mock.get("/task/t1/comment").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "comments": [
+                        {
+                            "id": "c1",
+                            "comment_text": "LGTM",
+                            "user": {"username": "jane"},
+                            "date": "1700000000000",
+                        }
+                    ]
+                },
+            )
+        )
+
+        with ClickUpClient("pk_token") as client:
+            provider = ClickUpProvider(client, ["l1"])
+            batch = provider.backfill()
+
+        assert len(batch.comments) == 1
+        comment = batch.comments[0]
+        assert comment.provider_task_id == "t1"
+        assert comment.provider_comment_id == "c1"
+        assert comment.author == "jane"
+        assert comment.body == "LGTM"
 
 
 def test_fetch_changes_not_implemented_yet() -> None:
