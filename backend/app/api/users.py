@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_active_user
@@ -17,14 +17,15 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    email: EmailStr
+    # Plain str, not EmailStr — see LoginRequest.email in app/api/auth.py.
+    email: str
     role: UserRole
     must_change_password: bool
     created_at: datetime
 
 
 class CreateUserRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     role: UserRole = UserRole.MEMBER
 

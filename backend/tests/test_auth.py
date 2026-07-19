@@ -47,6 +47,21 @@ def test_login_unknown_email_returns_401(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_login_accepts_default_bootstrap_admin_email_shape(
+    client: TestClient, db_session: Session
+) -> None:
+    """Regression test: EmailStr rejects TLD-less domains like "local", but
+    FR-SET-0's default ADMIN_EMAIL is literally "admin@local" — the login
+    endpoint must accept that shape (see LoginRequest.email in app/api/auth.py)."""
+    _create_user(db_session, email="admin@local", password="changeme")
+
+    response = client.post(
+        "/api/auth/login", json={"email": "admin@local", "password": "changeme"}
+    )
+
+    assert response.status_code == 200
+
+
 def test_change_password_updates_hash_and_clears_flag(
     client: TestClient, db_session: Session
 ) -> None:

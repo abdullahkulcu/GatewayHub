@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -14,7 +14,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Plain str, not EmailStr: the default bootstrap admin email (FR-SET-0,
+    # GOAL.md) is "admin@local", which EmailStr's TLD check rejects.
+    email: str
     password: str
 
 
