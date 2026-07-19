@@ -49,6 +49,7 @@ def clickup_task_to_provider_task(raw: dict[str, Any], list_id: str) -> Provider
         title=raw["name"],
         status=status.get("status", "unknown"),
         list_id=list_id,
+        list_name=(raw.get("list") or {}).get("name"),
         parent_provider_task_id=raw.get("parent"),
         description=raw.get("description") or None,
         status_category=_map_status_category(status.get("type")),

@@ -170,3 +170,27 @@ def test_unknown_sort_key_falls_back_to_default(client: TestClient, db_session: 
 
     assert response.status_code == 200
     assert [t["title"] for t in response.json()] == ["Apple", "Zebra"]
+
+
+def test_list_options_returns_distinct_synced_lists(
+    client: TestClient, db_session: Session
+) -> None:
+    _create_member(db_session)
+    db_session.add(_make_task(provider_list_id="l1", provider_list_name="Backlog"))
+    db_session.add(_make_task(provider_list_id="l1", provider_list_name="Backlog"))
+    db_session.add(_make_task(provider_list_id="l2", provider_list_name="Sprint 1"))
+    db_session.add(_make_task())  # no list at all — must not appear
+    db_session.flush()
+    headers = _auth_headers(client)
+
+    response = client.get("/api/tasks/list-options", headers=headers)
+
+    assert response.status_code == 200
+    options = {(o["id"], o["name"]) for o in response.json()}
+    assert options == {("l1", "Backlog"), ("l2", "Sprint 1")}
+
+
+def test_list_options_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/tasks/list-options")
+
+    assert response.status_code == 401

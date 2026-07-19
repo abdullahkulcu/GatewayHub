@@ -31,6 +31,7 @@ class TaskOut(BaseModel):
     provider: str
     provider_task_id: str
     provider_list_id: str | None
+    provider_list_name: str | None
     parent_id: uuid.UUID | None
     title: str
     description: str | None
@@ -90,6 +91,26 @@ def list_tasks(
     query = query.order_by(column.desc() if descending else column.asc())
 
     return list(db.execute(query).scalars().all())
+
+
+class ListOptionOut(BaseModel):
+    id: str
+    name: str | None
+
+
+@router.get("/list-options", response_model=list[ListOptionOut])
+def list_list_options(
+    db: Session = Depends(get_db), _user: User = Depends(require_active_user)
+) -> list[ListOptionOut]:
+    """Distinct provider lists actually present in synced tasks, for the
+    list view's "liste" filter. Purely a local DB query — never calls the
+    provider live (Principle 4: the UI never waits on the source system)."""
+    rows = db.execute(
+        select(Task.provider_list_id, Task.provider_list_name)
+        .where(Task.provider_list_id.is_not(None))
+        .distinct()
+    ).all()
+    return [ListOptionOut(id=row.provider_list_id, name=row.provider_list_name) for row in rows]
 
 
 @router.get("/{task_id}", response_model=TaskDetailOut)

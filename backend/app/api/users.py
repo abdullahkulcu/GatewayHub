@@ -49,6 +49,23 @@ def list_users(
     return list(db.query(User).order_by(User.created_at).all())
 
 
+class UserDirectoryEntry(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+
+
+@router.get("/directory", response_model=list[UserDirectoryEntry])
+def list_user_directory(
+    db: Session = Depends(get_db), _user: User = Depends(require_active_user)
+) -> list[User]:
+    """Minimal id+email lookup for any active user — not admin-gated like
+    the rest of this router — so the task list/board views can resolve
+    assignee UUIDs to a human-readable email for every team member."""
+    return list(db.query(User).order_by(User.email).all())
+
+
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
     payload: CreateUserRequest,
