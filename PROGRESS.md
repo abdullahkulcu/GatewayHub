@@ -1,5 +1,44 @@
 # GatewayHub — İlerleme Takibi (Faz 0)
 
+## FAZ 0 TAMAM
+
+T1-T29'un tamamı `[x]`. PRD §8'deki Faz 0 başarı kriteri tek cümlede üç parçadan
+oluşuyor; her biri aşağıda kanıtıyla:
+
+1. **"Abdullah bir hafta boyunca günlük task takibini ClickUp arayüzü yerine
+   GatewayHub'tan yapıyor (yazma gerektiğinde ClickUp'a geçmek serbest)"** —
+   bunun teknik önkoşulları eksiksiz: ClickUp'tan gerçek zamanlı okuma
+   (backfill T11 + poll `fetch_changes` T13, worker T16), liste (T21) ve board
+   (T22) görünümleri, task detay paneli (T23), filtreler (T17) ve klavye
+   navigasyonu (T24) hepsi çalışır ve gerçek tarayıcı koşularıyla doğrulanmış
+   durumda. **Doğrulanamayan kısım:** "bir hafta boyunca fiilen kullanma"
+   deneyimsel bir kriterdir — bunu bir agent'ın kod/test incelemesiyle
+   kanıtlaması mümkün değil, yalnızca Abdullah'ın gerçek kullanımıyla
+   doğrulanabilir. Teknik temel hazır; kullanım kanıtı insana ait.
+2. **"En az bir teammate ikinci kullanıcı olarak eklenip kendi görünümünü
+   kullanabiliyor"** — `POST /api/users` (T8, admin-only) yeni kullanıcı
+   ekliyor, `must_change_password=True` ile başlıyor (T7); `require_active_user`
+   ile korunan tüm görünüm endpoint'leri (T17-T19) herhangi bir member
+   hesabıyla erişilebilir, admin şart değil. `backend/tests/test_users.py`,
+   `test_auth.py` bunu test ediyor. Aynı şekilde deneyimsel doğrulama
+   (gerçek bir teammate'in gerçekten eklenip kullanması) insana ait.
+3. **"S1/S2'nin okuma tarafı sorunsuz"** — S1 (sabah rutini: atanmış+aktif
+   task'ların flat liste görünümü, subtask'lar parent'a gömülü değil):
+   `TasksListPage` + `assignee`/`status`/`has_parent` filtreleri (T17, T21),
+   subtask'lar bağımsız satır (`↳` göstergesi). S2'nin okuma tarafı (board'da
+   subtask'ın bağımsız kart olarak görünmesi, parent rozetiyle): T22 —
+   sürükle-bırak (yazma) kısmı PRD'nin kendi notuyla ("okuma tarafı") ve
+   GOAL.md guardrail'iyle ("write-back yok") bilinçli olarak kapsam dışı.
+
+**Kapsam koruması doğrulandı:** `providers/base.py`'de `parse_webhook`/
+`push_change` hâlâ `NotImplementedError`; kod tabanında write-back, AI,
+webhook, WebSocket veya plugin koduna dair hiçbir iz yok (T28'de tek tek
+kontrol edildi). Kalite geçişi (T29): 145/145 test yeşil, ruff+mypy+tsc temiz,
+coverage %98 (hedef ≥%80).
+
+**Faz 1'e kendiliğinden başlanmıyor** — GOAL.md'nin kuralı gereği burada
+duruluyor.
+
 Faz 0 kapsamı PRD Bölüm 8'e göre küçük tasklara bölünmüştür. Her çağrıda `[ ]`
 durumundaki en üstteki task tamamlanır.
 
@@ -53,9 +92,13 @@ durumundaki en üstteki task tamamlanır.
   - Liste görünümünde `j`/`k` satır gezinme (odaklı satır mavi outline ile işaretli), `Enter` odaklı satırı açar, `Escape` paneli kapatır — hepsi metin girdilerine yazarken devre dışı (`isTypingTarget`). `CommandPalette` (`Cmd/Ctrl+K`, `AppShell` içinde global) task başlığına göre canlı arama, ok tuşlarıyla gezinme, `Enter` ile seçim. **Kapsam dışı bırakılan:** FR-UI-3'ün "tek tuş status/assignee değişimi" kısmı — bu bir yazma (write-back) eylemi, Faz 0'da yok (T22'deki board sürükle-bırak kararıyla aynı gerekçe; PRD çelişkisi değil, Faz 0'ın "Kapsam dışı: her türlü yazma" kuralının doğal sonucu). Gerçek tarayıcı koşusuyla doğrulandı: j/j/k gezinme, Enter/Escape, ve Ctrl+K ile arama+seçim hepsi doğru çalışıyor.
 - [x] T25: Frontend — Settings sayfası (provider token, sync kapsamı, poll aralığı, kullanıcı yönetimi UI).
   - `SettingsPage` + `components/settings/*` (`ClickUpConnectionCard`, `SyncScopeCard`, `PollIntervalCard`, `SyncStatusCard`, `UserManagementCard`), hepsi `require_admin` API'lerine bağlı. `GET /api/auth/me` eklendi (rol bilgisi) — `AppShell` Settings linkini sadece admin'e gösteriyor, member `/settings`'e direkt giderse "sadece admin" mesajı görüyor (backend zaten 403 döndürüyor, bu sadece UX). **Yan bulgu + düzeltme:** ClickUp'a canlı çağrı yapan üç endpoint (token doğrulama, workspace/list keşfi) ağ hatasında (proxy/DNS/timeout/ClickUp kesintisi) ham 500 dönüyordu — `_call_clickup()` sarmalayıcısı eklendi, artık temiz 502 dönüyor (regresyon testiyle doğrulandı). Bu ortamda ClickUp'a canlı erişim olmadığı için (sandbox network kısıtı) token/sync-scope akışları mock'lu backend testleriyle doğrulandı; poll interval, kullanıcı yönetimi (ekle/parola sıfırla/sil) ve admin/member nav farkı gerçek tarayıcıda uçtan uca doğrulandı.
-- [ ] T26: Docker Compose — tam entegrasyon (app: API+UI static serve, worker, postgres, redis) tek komutla ayağa kalkma; Dockerfile'lar.
+- [x] T26: Docker Compose — tam entegrasyon (app: API+UI static serve, worker, postgres, redis) tek komutla ayağa kalkma; Dockerfile'lar.
+  - `backend/Dockerfile` artık iki aşamalı: `node:22-slim` aşaması `frontend/`'i build edip `/frontend/dist`'e yazıyor, ikinci (python) aşama backend'i kopyalayıp bu dist'i `main.py`'nin beklediği `/frontend/dist` (yani `/app`'ın kardeşi) yoluna alıyor — T20'de yazılan static-serve kodu hiç değişmedi. Build context `./backend`'ten repo köküne taşındı (frontend'e erişebilmek için); root'a bir `.dockerignore` eklendi (`.git`, `node_modules`, `dist`, test/cache dizinleri — build context'i şişirmesin diye). `worker/Dockerfile` yeni: aynı repo-kökü context'iyle sadece `backend/` (worker'ın import ettiği `app.db`/`app.poller`) ve `worker/`'ı kopyalıyor — `worker/main.py`'deki mevcut `sys.path` göreli-yol varsayımıyla birebir uyumlu, kod değişmedi. `docker-compose.yml`: `postgres`/`redis`'e healthcheck eklendi; migration'ları tek seferlik bir `migrate` servisi çalıştırıyor (`alembic upgrade head` edip çıkıyor) — `app` ve `worker` ikisi de `migrate`'in `service_completed_successfully` olmasını bekliyor, böylece migration ne app başlangıcında gizli bir adım olarak kalıyor ne de app/worker aynı anda migration'ı iki kez koşturma riski taşıyor. Bu sandbox'ta Docker daemon'a erişim yok (`dockerd` başlatma izni reddediliyor) — `docker compose config` ile compose dosyası doğrulandı (env interpolation, depends_on/healthcheck koşulları, build context'leri doğru); gerçek `docker compose up` ile uçtan uca koşu bu ortamda yapılamadı, bir sonraki Docker'lı ortamda doğrulanmalı.
 - [x] T20b: `docs/INTEGRATIONS.md` — kullanıcı isteği: ClickUp (Faz 0'da mevcut) entegrasyonunun nasıl kurulacağını anlatan doküman (Personal API Token nasıl alınır, hangi workspace/space/list ID'leri gerekli, panelde nereye girilir). Jira, Faz 2'ye kadar mevcut değil — dokümanda bu açıkça belirtilir, hayali adımlar yazılmaz.
   - Settings UI (T25) henüz yok, bu yüzden doküman gerçek `/api/settings/*` endpoint'lerini `curl` örnekleriyle anlatıyor — var olmayan bir panel akışını anlatmıyor. T25 tamamlandığında doküman panel adımlarına güncellenmeli.
-- [ ] T27: `setup.sh` — kullanıcı isteği: makineye indirip tek script ile kurulum (`.env` yoksa `.env.example`'dan oluştur + rastgele `SECRET_KEY` üret + `docker compose up -d --build` + hazır olduğunda panel URL'ini yazdır). README'deki `cp .env.example .env && docker compose up` akışının yerini almaz, ona ek pratik bir kısayoldur.
-- [ ] T28: README finalize (≤10 satır kurulum, `setup.sh` seçeneğine referans), Faz 0 kapsam kontrolü.
-- [ ] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
+- [x] T27: `setup.sh` — kullanıcı isteği: makineye indirip tek script ile kurulum (`.env` yoksa `.env.example`'dan oluştur + rastgele `SECRET_KEY` üret + `docker compose up -d --build` + hazır olduğunda panel URL'ini yazdır). README'deki `cp .env.example .env && docker compose up` akışının yerini almaz, ona ek pratik bir kısayoldur.
+  - Kök dizinde `setup.sh` (çalıştırılabilir, `set -euo pipefail`): `.env` yoksa `.env.example`'dan kopyalıyor ve `SECRET_KEY`'i `openssl rand -hex 32` (yoksa `python3 secrets.token_hex`, o da yoksa `/dev/urandom`) ile üretilen rastgele değerle değiştiriyor — `.env` zaten varsa dokunmuyor (mevcut kurulumu ezmeme). `docker compose up -d --build` sonrası `.env`'deki `APP_PORT`'u okuyup `${url}/healthz`'i 2 saniye aralıkla (60 deneme = 2 dakika) polluyor, hazır olunca panel URL'ini yazdırıyor; zaman aşımında `docker compose logs -f app migrate` ipucuyla hata kodu 1 ile çıkıyor. Docker daemon'a bu sandbox'ta erişim yok — script'in `bash -n` sözdizim kontrolü ve `.env` üretim/sed mantığı (rastgele secret enjeksiyonu) izole olarak doğrulandı, gerçek `docker compose up` koşusu bir sonraki Docker'lı ortamda test edilmeli (T26'daki notla aynı sınırlama). README'ye tek satırlık referans eklendi (kurulum bölümü hâlâ ≤10 satır).
+- [x] T28: README finalize (≤10 satır kurulum, `setup.sh` seçeneğine referans), Faz 0 kapsam kontrolü.
+  - README kurulum bölümü 8 satır (`cp .env.example .env && docker compose up` akışı + `setup.sh` referansı tek satırda) — PRD/GOAL'daki "≤10 satır" sınırı içinde. Faz 0 kapsam kontrolü (PRD §8): ClickUp read-only adapter backfill+poll (T10-T14, webhook yok — `parse_webhook`/`push_change` hâlâ `NotImplementedError`, `providers/base.py`), yorumların okunması (T12), canonical model+Postgres (T2-T6), çoklu kullanıcı auth+bootstrap admin+panelden kullanıcı ekleme (T7-T8), liste+board görünümleri ve subtaskların bağımsız render'ı (T21-T22), temel filtreler (T17), keyboard gezinme (T24), Settings temel sayfası (T15/T25), Docker Compose tek komut kurulum (T26-T27) — hepsi mevcut ve `[x]`. Kapsam dışı bırakılanlar (her türlü yazma, AI, webhook) kodda hiçbir yerde uygulanmamış; T22/T24'te bilinçli olarak atlandığı ayrıca not düşülmüştü. Faz 0 tamamlanmadan Faz 1'e ait hiçbir şey (outbound queue, optimistic UI, WebSocket/polling canlı güncelleme) eklenmedi.
+- [x] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
+  - Gerçek Postgres 16 + Redis 7'ye karşı çalıştırıldı (mock değil): `pytest` → 145/145 yeşil; `ruff check .` → temiz; `mypy .` (strict) → 51 dosya, hata yok. Coverage (`app`+`providers`): **%98** (836 satır, 16 kaçırılan — kalanlar `main.py`'nin frontend-yok fallback dalı ve `db.py`'nin engine-oluşturma satırları gibi test edilmesi pratik olmayan yerler), GOAL.md'deki ≥%80 hedefinin üzerinde. Frontend: `tsc -b` temiz, `npm run lint` (oxlint) temiz; birim test framework'ü kurulmadı (frontend için GOAL.md sadece `tsc --noEmit` temizliği istiyor, T20-T25'te her ekran zaten gerçek headless tarayıcı koşusuyla doğrulanmıştı). Faz 0 başarı kriteri (PRD §8) detaylı kontrolü dosyanın en üstündeki `## FAZ 0 TAMAM` bölümünde.

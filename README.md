@@ -13,3 +13,5 @@ docker compose up
 
 Panel `http://localhost:8000` adresinde açılır. Settings sayfasından ClickUp
 token'ınızı girin.
+
+Ya da tek komutla: `./setup.sh` (`.env` kurar, `docker compose up` çalıştırır, panel hazır olunca URL'i yazdırır).
