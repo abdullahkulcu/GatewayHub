@@ -149,15 +149,21 @@ class ClickUpClient:
         lists: list[dict[str, Any]] = data.get("lists", [])
         return lists
 
-    def list_tasks(self, list_id: str) -> list[dict[str, Any]]:
-        """All tasks in a list, including subtasks and closed tasks, across pages."""
+    def list_tasks(
+        self, list_id: str, updated_since: datetime | None = None
+    ) -> list[dict[str, Any]]:
+        """Tasks in a list, including subtasks and closed tasks, across pages.
+
+        `updated_since` restricts results to tasks ClickUp has updated after
+        that time, for incremental sync (fetch_changes).
+        """
         tasks: list[dict[str, Any]] = []
         page = 0
+        base_params: dict[str, Any] = {"subtasks": "true", "include_closed": "true"}
+        if updated_since is not None:
+            base_params["date_updated_gt"] = int(updated_since.timestamp() * 1000)
         while True:
-            data = self._get(
-                f"/list/{list_id}/task",
-                params={"subtasks": "true", "include_closed": "true", "page": page},
-            )
+            data = self._get(f"/list/{list_id}/task", params={**base_params, "page": page})
             page_tasks: list[dict[str, Any]] = data.get("tasks", [])
             if not page_tasks:
                 break
@@ -178,11 +184,11 @@ class ClickUpProvider(TaskProvider):
         self._client = client
         self._list_ids = list(list_ids)
 
-    def backfill(self) -> SyncBatch:
+    def _collect(self, updated_since: datetime | None) -> SyncBatch:
         raw_tasks = [
             raw_task
             for list_id in self._list_ids
-            for raw_task in self._client.list_tasks(list_id)
+            for raw_task in self._client.list_tasks(list_id, updated_since=updated_since)
         ]
         tasks = [clickup_task_to_provider_task(raw_task) for raw_task in raw_tasks]
         comments = [
@@ -192,8 +198,11 @@ class ClickUpProvider(TaskProvider):
         ]
         return SyncBatch(tasks=tasks, comments=comments)
 
+    def backfill(self) -> SyncBatch:
+        return self._collect(updated_since=None)
+
     def fetch_changes(self, since: datetime) -> SyncBatch:
-        raise NotImplementedError("Incremental ClickUp sync lands in T13")
+        return self._collect(updated_since=since)
 
     def capabilities(self) -> ProviderCapabilities:
         return ProviderCapabilities(

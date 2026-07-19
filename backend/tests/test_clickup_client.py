@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import httpx
 import pytest
 import respx
@@ -143,6 +145,31 @@ def test_list_tasks_stops_on_empty_page_even_if_last_page_flag_says_more() -> No
             tasks = client.list_tasks("l1")
 
         assert [t["id"] for t in tasks] == ["t1"]
+
+
+def test_list_tasks_without_updated_since_omits_date_filter() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        route = mock.get("/list/l1/task", params={"page": "0"}).mock(
+            return_value=httpx.Response(200, json={"tasks": [], "last_page": True})
+        )
+
+        with ClickUpClient("pk_token") as client:
+            client.list_tasks("l1")
+
+        assert "date_updated_gt" not in route.calls.last.request.url.params
+
+
+def test_list_tasks_with_updated_since_sets_date_updated_gt() -> None:
+    since = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        route = mock.get(
+            "/list/l1/task", params={"page": "0", "date_updated_gt": "1705320000000"}
+        ).mock(return_value=httpx.Response(200, json={"tasks": [], "last_page": True}))
+
+        with ClickUpClient("pk_token") as client:
+            client.list_tasks("l1", updated_since=since)
+
+        assert route.calls.last.request.url.params["date_updated_gt"] == "1705320000000"
 
 
 def test_list_comments_for_task() -> None:

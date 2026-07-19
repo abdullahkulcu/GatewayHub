@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 import httpx
-import pytest
 import respx
 
 from providers.clickup import CLICKUP_API_BASE, ClickUpClient, ClickUpProvider
@@ -95,12 +94,32 @@ def test_backfill_includes_comments_per_task() -> None:
         assert comment.body == "LGTM"
 
 
-def test_fetch_changes_not_implemented_yet() -> None:
-    with ClickUpClient("pk_token") as client:
-        provider = ClickUpProvider(client, [])
+def test_fetch_changes_only_returns_tasks_updated_since() -> None:
+    since = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        route = mock.get(
+            "/list/l1/task", params={"page": "0", "date_updated_gt": "1705320000000"}
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "tasks": [
+                        {"id": "t1", "name": "Changed", "status": {"status": "open"}}
+                    ],
+                    "last_page": True,
+                },
+            )
+        )
+        mock.get("/task/t1/comment").mock(
+            return_value=httpx.Response(200, json={"comments": []})
+        )
 
-        with pytest.raises(NotImplementedError):
-            provider.fetch_changes(datetime.now(UTC))
+        with ClickUpClient("pk_token") as client:
+            provider = ClickUpProvider(client, ["l1"])
+            batch = provider.fetch_changes(since)
+
+        assert route.called
+        assert [t.provider_task_id for t in batch.tasks] == ["t1"]
 
 
 def test_capabilities_declares_independent_subtasks_and_multi_assignee() -> None:
