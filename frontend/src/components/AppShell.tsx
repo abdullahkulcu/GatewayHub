@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../shared/useAuth'
+import { CommandPalette } from './CommandPalette'
 
 function navClasses({ isActive }: { isActive: boolean }): string {
   return `text-sm ${isActive ? 'text-neutral-100' : 'text-neutral-500 hover:text-neutral-300'}`
@@ -23,15 +24,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           </nav>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="text-sm text-neutral-400 hover:text-neutral-100"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-neutral-600">⌘K to search</span>
+          <button
+            type="button"
+            onClick={logout}
+            className="text-sm text-neutral-400 hover:text-neutral-100"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
       <main className="p-6">{children}</main>
+      <CommandPalette />
     </div>
   )
 }

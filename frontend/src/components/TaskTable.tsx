@@ -6,6 +6,7 @@ interface TaskTableProps {
   sort: string
   onSort: (column: string) => void
   onSelect: (taskId: string) => void
+  focusedIndex?: number | null
 }
 
 const COLUMNS: { key: string; label: string; sortable: boolean }[] = [
@@ -30,7 +31,14 @@ const STATUS_CATEGORY_COLOR: Record<string, string> = {
   cancelled: 'bg-red-950 text-red-300',
 }
 
-export function TaskTable({ tasks, usersById, sort, onSort, onSelect }: TaskTableProps) {
+export function TaskTable({
+  tasks,
+  usersById,
+  sort,
+  onSort,
+  onSelect,
+  focusedIndex,
+}: TaskTableProps) {
   if (tasks.length === 0) {
     return <p className="text-sm text-neutral-500">No tasks match the current filters.</p>
   }
@@ -58,11 +66,13 @@ export function TaskTable({ tasks, usersById, sort, onSort, onSelect }: TaskTabl
         </tr>
       </thead>
       <tbody>
-        {tasks.map((task) => (
+        {tasks.map((task, index) => (
           <tr
             key={task.id}
             onClick={() => onSelect(task.id)}
-            className="cursor-pointer border-b border-neutral-900 hover:bg-neutral-900/50"
+            className={`cursor-pointer border-b border-neutral-900 hover:bg-neutral-900/50 ${
+              index === focusedIndex ? 'bg-neutral-900 outline outline-1 -outline-offset-1 outline-indigo-500' : ''
+            }`}
           >
             <td className="px-3 py-2">
               {task.parent_id && <span className="mr-1 text-neutral-500">↳</span>}

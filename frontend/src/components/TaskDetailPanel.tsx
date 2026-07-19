@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import Markdown from 'react-markdown'
 import { useTask } from '../shared/queries'
 
@@ -13,6 +14,14 @@ function formatDateTime(value: string | null): string {
 
 export function TaskDetailPanel({ taskId, usersById, onClose }: TaskDetailPanelProps) {
   const { data: task, isLoading, isError } = useTask(taskId)
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   return (
     <div className="fixed inset-0 z-20 flex justify-end bg-black/50" onClick={onClose}>
