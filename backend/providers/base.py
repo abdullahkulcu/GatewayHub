@@ -28,6 +28,7 @@ class ProviderTask:
     provider_task_id: str
     title: str
     status: str
+    list_id: str | None = None
     parent_provider_task_id: str | None = None
     description: str | None = None
     status_category: StatusCategory | None = None

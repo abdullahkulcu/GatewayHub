@@ -22,7 +22,7 @@ def _raw_task(**overrides: object) -> dict[str, object]:
 
 
 def test_maps_core_fields() -> None:
-    task = clickup_task_to_provider_task(_raw_task())
+    task = clickup_task_to_provider_task(_raw_task(), "l1")
 
     assert task.provider_task_id == "abc123"
     assert task.title == "Write the PRD"
@@ -33,33 +33,39 @@ def test_maps_core_fields() -> None:
 
 
 def test_assignees_without_email_are_skipped() -> None:
-    task = clickup_task_to_provider_task(_raw_task())
+    task = clickup_task_to_provider_task(_raw_task(), "l1")
 
     assert task.assignee_emails == ["dev@example.com"]
 
 
 def test_due_date_and_updated_at_parsed_from_epoch_millis() -> None:
-    task = clickup_task_to_provider_task(_raw_task())
+    task = clickup_task_to_provider_task(_raw_task(), "l1")
 
     assert task.due_date == datetime.fromtimestamp(1700000000, tz=UTC)
     assert task.provider_updated_at == datetime.fromtimestamp(1700000100, tz=UTC)
 
 
 def test_missing_due_date_is_none() -> None:
-    task = clickup_task_to_provider_task(_raw_task(due_date=None))
+    task = clickup_task_to_provider_task(_raw_task(due_date=None), "l1")
 
     assert task.due_date is None
 
 
+def test_list_id_is_the_list_the_task_was_fetched_from() -> None:
+    task = clickup_task_to_provider_task(_raw_task(), "list-42")
+
+    assert task.list_id == "list-42"
+
+
 def test_parent_id_passed_through() -> None:
-    task = clickup_task_to_provider_task(_raw_task(parent="parent-1"))
+    task = clickup_task_to_provider_task(_raw_task(parent="parent-1"), "l1")
 
     assert task.parent_provider_task_id == "parent-1"
 
 
 def test_status_type_open_maps_to_todo() -> None:
     task = clickup_task_to_provider_task(
-        _raw_task(status={"status": "to do", "type": "open"})
+        _raw_task(status={"status": "to do", "type": "open"}), "l1"
     )
 
     assert task.status_category == StatusCategory.TODO
@@ -67,7 +73,7 @@ def test_status_type_open_maps_to_todo() -> None:
 
 def test_status_type_closed_maps_to_done() -> None:
     task = clickup_task_to_provider_task(
-        _raw_task(status={"status": "complete", "type": "closed"})
+        _raw_task(status={"status": "complete", "type": "closed"}), "l1"
     )
 
     assert task.status_category == StatusCategory.DONE
@@ -75,14 +81,14 @@ def test_status_type_closed_maps_to_done() -> None:
 
 def test_unknown_status_type_maps_to_none() -> None:
     task = clickup_task_to_provider_task(
-        _raw_task(status={"status": "weird", "type": "something_new"})
+        _raw_task(status={"status": "weird", "type": "something_new"}), "l1"
     )
 
     assert task.status_category is None
 
 
 def test_no_priority_is_none() -> None:
-    task = clickup_task_to_provider_task(_raw_task(priority=None))
+    task = clickup_task_to_provider_task(_raw_task(priority=None), "l1")
 
     assert task.priority is None
 
@@ -90,7 +96,7 @@ def test_no_priority_is_none() -> None:
 def test_raw_payload_is_preserved() -> None:
     raw = _raw_task()
 
-    task = clickup_task_to_provider_task(raw)
+    task = clickup_task_to_provider_task(raw, "l1")
 
     assert task.raw == raw
 

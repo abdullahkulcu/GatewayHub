@@ -39,6 +39,7 @@ def upsert_sync_batch(db: Session, provider: str, batch: SyncBatch) -> None:
             db.add(existing)
 
         existing.title = provider_task.title
+        existing.provider_list_id = provider_task.list_id
         existing.description = provider_task.description
         existing.status = provider_task.status
         existing.status_category = provider_task.status_category

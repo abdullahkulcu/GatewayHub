@@ -33,6 +33,7 @@ class Task(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider: Mapped[str] = mapped_column(String)
     provider_task_id: Mapped[str] = mapped_column(String)
+    provider_list_id: Mapped[str | None] = mapped_column(String, nullable=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True
     )

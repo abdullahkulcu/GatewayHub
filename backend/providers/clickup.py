@@ -41,13 +41,14 @@ def _parse_epoch_millis(value: str | None) -> datetime | None:
     return datetime.fromtimestamp(int(value) / 1000, tz=UTC)
 
 
-def clickup_task_to_provider_task(raw: dict[str, Any]) -> ProviderTask:
+def clickup_task_to_provider_task(raw: dict[str, Any], list_id: str) -> ProviderTask:
     status = raw.get("status") or {}
     priority = raw.get("priority") or None
     return ProviderTask(
         provider_task_id=raw["id"],
         title=raw["name"],
         status=status.get("status", "unknown"),
+        list_id=list_id,
         parent_provider_task_id=raw.get("parent"),
         description=raw.get("description") or None,
         status_category=_map_status_category(status.get("type")),
@@ -193,15 +194,18 @@ class ClickUpProvider(TaskProvider):
         self._list_ids = list(list_ids)
 
     def _collect(self, updated_since: datetime | None) -> SyncBatch:
-        raw_tasks = [
-            raw_task
+        raw_tasks_by_list = [
+            (list_id, raw_task)
             for list_id in self._list_ids
             for raw_task in self._client.list_tasks(list_id, updated_since=updated_since)
         ]
-        tasks = [clickup_task_to_provider_task(raw_task) for raw_task in raw_tasks]
+        tasks = [
+            clickup_task_to_provider_task(raw_task, list_id)
+            for list_id, raw_task in raw_tasks_by_list
+        ]
         comments = [
             clickup_comment_to_provider_comment(raw_task["id"], raw_comment)
-            for raw_task in raw_tasks
+            for _list_id, raw_task in raw_tasks_by_list
             for raw_comment in self._client.list_comments(raw_task["id"])
         ]
         return SyncBatch(tasks=tasks, comments=comments)

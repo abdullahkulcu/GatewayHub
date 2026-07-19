@@ -17,6 +17,7 @@ def test_inserts_new_task(db_session: Session) -> None:
                 title="Write PRD",
                 status="open",
                 status_category=StatusCategory.TODO,
+                list_id="list-1",
             )
         ]
     )
@@ -26,6 +27,7 @@ def test_inserts_new_task(db_session: Session) -> None:
     task = db_session.query(Task).filter_by(provider_task_id="t1").one()
     assert task.title == "Write PRD"
     assert task.status_category == StatusCategory.TODO
+    assert task.provider_list_id == "list-1"
     assert task.sync_version == 1
 
 
