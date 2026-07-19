@@ -21,7 +21,8 @@ durumundaki en üstteki task tamamlanır.
   - `backend/app/api/users.py`: `GET/POST /api/users`, `DELETE /api/users/{id}`, `POST /api/users/{id}/reset-password`; hepsi `require_admin` (role == admin + must_change_password tamamlanmış) arkasında. Yeni kullanıcılar ve parola sıfırlamaları `must_change_password=True` ile başlıyor. Son kalan admin silinemiyor (kilitlenmeyi önleme guardrail'i).
 - [x] T9: `TaskProvider` abstract class (`backend/providers/base.py`): backfill(), fetch_changes(since), parse_webhook(payload) [NotImplemented], push_change(change) [NotImplemented], capabilities() + testler.
   - `ProviderTask`/`ProviderComment`/`SyncBatch` dataclass'ları adapter ile worker arasındaki normalize edilmiş (henüz DB satırı olmayan) taşıma formatı. `assignee_emails` provider kimliğini `users.email` ile eşleştiriyor (Faz 0'da ayrı bir provider-user eşleme tablosu yok — YAGNI). `ProviderCapabilities` FR-PROV-2'yi karşılıyor.
-- [ ] T10: ClickUp adapter — token doğrulama, workspace/space/list keşif çağrıları (respx mock'lu testler).
+- [x] T10: ClickUp adapter — token doğrulama, workspace/space/list keşif çağrıları (respx mock'lu testler).
+  - `backend/providers/clickup.py`: `ClickUpClient` (`httpx.Client`, token `Authorization` header'ında `Bearer` öneki olmadan — ClickUp'ın beklediği format), `verify_token()`, `list_workspaces/list_spaces/list_folders/list_folderless_lists/list_lists_in_folder`. Henüz `TaskProvider` alt sınıfı değil — `backfill()` gelene kadar (T11) somut adapter sınıfı açılmayacak, yarım bırakılmış abstract method'lar olmasın diye.
 - [ ] T11: ClickUp adapter — backfill(): task/subtask/status/assignee/tag/priority/due_date çekme ve canonical modele upsert + testler.
 - [ ] T12: ClickUp adapter — yorumların backfill'i (comments) + testler.
 - [ ] T13: ClickUp adapter — fetch_changes(since): artımlı sync + testler.
