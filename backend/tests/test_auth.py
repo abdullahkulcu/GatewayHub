@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.security import hash_password
 
 
@@ -113,3 +113,41 @@ def test_change_password_requires_authentication(client: TestClient) -> None:
     )
 
     assert response.status_code == 401
+
+
+def test_me_returns_current_user_including_role(client: TestClient, db_session: Session) -> None:
+    _create_user(db_session, email="admin@example.com")
+    db_session.query(User).filter_by(email="admin@example.com").update({"role": UserRole.ADMIN})
+    db_session.flush()
+    login = client.post(
+        "/api/auth/login", json={"email": "admin@example.com", "password": "hunter2"}
+    )
+    token = login.json()["access_token"]
+
+    response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["email"] == "admin@example.com"
+    assert body["role"] == "admin"
+
+
+def test_me_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 401
+
+
+def test_me_works_even_when_password_change_is_pending(
+    client: TestClient, db_session: Session
+) -> None:
+    _create_user(db_session)  # must_change_password=True by default
+    login = client.post(
+        "/api/auth/login", json={"email": "dev@example.com", "password": "hunter2"}
+    )
+    token = login.json()["access_token"]
+
+    response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json()["must_change_password"] is True

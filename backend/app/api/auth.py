@@ -2,11 +2,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.security import create_access_token, decode_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -70,6 +70,22 @@ def require_active_user(user: User = Depends(get_current_user)) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password change required before continuing",
         )
+    return user
+
+
+class MeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    role: UserRole
+    must_change_password: bool
+
+
+@router.get("/me", response_model=MeOut)
+def get_me(user: User = Depends(get_current_user)) -> User:
+    """Lets the frontend know the current user's role (e.g. to hide the
+    Settings nav link from non-admins) without decoding the JWT client-side."""
     return user
 
 
