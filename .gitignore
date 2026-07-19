@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node.js / frontend (dist/ already covered above by the Python sdist rule)
+node_modules/
+*.tsbuildinfo
