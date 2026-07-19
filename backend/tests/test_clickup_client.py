@@ -99,3 +99,47 @@ def test_server_error_raises() -> None:
 
         with ClickUpClient("pk_token") as client, pytest.raises(httpx.HTTPStatusError):
             client.list_workspaces()
+
+
+def test_list_tasks_stops_on_last_page_flag() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/list/l1/task", params={"page": "0"}).mock(
+            return_value=httpx.Response(
+                200, json={"tasks": [{"id": "t1"}, {"id": "t2"}], "last_page": True}
+            )
+        )
+
+        with ClickUpClient("pk_token") as client:
+            tasks = client.list_tasks("l1")
+
+        assert [t["id"] for t in tasks] == ["t1", "t2"]
+
+
+def test_list_tasks_paginates_until_last_page() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/list/l1/task", params={"page": "0"}).mock(
+            return_value=httpx.Response(200, json={"tasks": [{"id": "t1"}], "last_page": False})
+        )
+        mock.get("/list/l1/task", params={"page": "1"}).mock(
+            return_value=httpx.Response(200, json={"tasks": [{"id": "t2"}], "last_page": True})
+        )
+
+        with ClickUpClient("pk_token") as client:
+            tasks = client.list_tasks("l1")
+
+        assert [t["id"] for t in tasks] == ["t1", "t2"]
+
+
+def test_list_tasks_stops_on_empty_page_even_if_last_page_flag_says_more() -> None:
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/list/l1/task", params={"page": "0"}).mock(
+            return_value=httpx.Response(200, json={"tasks": [{"id": "t1"}], "last_page": False})
+        )
+        mock.get("/list/l1/task", params={"page": "1"}).mock(
+            return_value=httpx.Response(200, json={"tasks": [], "last_page": False})
+        )
+
+        with ClickUpClient("pk_token") as client:
+            tasks = client.list_tasks("l1")
+
+        assert [t["id"] for t in tasks] == ["t1"]

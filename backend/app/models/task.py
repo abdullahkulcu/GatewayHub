@@ -9,13 +9,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
+from providers.base import StatusCategory
 
-
-class StatusCategory(str, Enum):
-    TODO = "todo"
-    IN_PROGRESS = "in_progress"
-    DONE = "done"
-    CANCELLED = "cancelled"
+__all__ = ["StatusCategory", "Task", "WriteState"]
 
 
 class WriteState(str, Enum):

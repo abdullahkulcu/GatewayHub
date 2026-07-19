@@ -1,7 +1,19 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Any
+
+
+class StatusCategory(str, Enum):
+    """The fixed status vocabulary every adapter maps its native statuses
+    onto (FR-MODEL-4). Optional/best-effort — adapters may leave a task's
+    category unset when no sensible mapping exists."""
+
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    CANCELLED = "cancelled"
 
 
 @dataclass(frozen=True)
@@ -18,7 +30,7 @@ class ProviderTask:
     status: str
     parent_provider_task_id: str | None = None
     description: str | None = None
-    status_category: str | None = None
+    status_category: StatusCategory | None = None
     assignee_emails: list[str] = field(default_factory=list)
     priority: str | None = None
     due_date: datetime | None = None
