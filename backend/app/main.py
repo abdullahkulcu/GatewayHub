@@ -1,8 +1,23 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.api.auth import router as auth_router
+from app.bootstrap import ensure_bootstrap_admin
 from app.config import get_settings
+from app.db import SessionLocal
 
-app = FastAPI(title="GatewayHub")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    with SessionLocal() as db:
+        ensure_bootstrap_admin(db)
+    yield
+
+
+app = FastAPI(title="GatewayHub", lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.get("/healthz")
