@@ -3,19 +3,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './shared/useAuth'
 import { LoginPage } from './pages/LoginPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
+import { TasksListPage } from './pages/TasksListPage'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { token } = useAuth()
   if (!token) return <Navigate to="/login" replace />
   return <>{children}</>
-}
-
-function HomePage() {
-  return (
-    <div className="p-6 text-neutral-100">
-      GatewayHub — list/board views land in later tasks.
-    </div>
-  )
 }
 
 export default function App() {
@@ -34,7 +27,7 @@ export default function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <HomePage />
+            <TasksListPage />
           </ProtectedRoute>
         }
       />
