@@ -5,7 +5,8 @@ durumundaki en üstteki task tamamlanır.
 
 - [x] T1: Proje iskeleti — dizin yapısı (backend/, frontend/, worker/, docs/), Makefile (dev/test/lint), .env.example, docker-compose.yml iskeleti (postgres+redis+app+worker), README iskeleti. Backend: FastAPI app + pydantic Settings (.env okuma) + `/healthz` endpoint + pytest/ruff/mypy kurulumu.
   - `backend/app/{config.py,main.py}` + `backend/tests/test_health.py` (pytest yeşil, ruff+mypy temiz). `docker-compose.yml`'e worker servisi henüz eklenmedi — worker'ın gerçek bir davranışı olmadan (T16) compose'a eklemek yarım bırakılmış bileşen olurdu; worker `Dockerfile`'ı ve compose servisi T26'da tamamlanacak.
-- [ ] T2: SQLAlchemy 2 + Alembic kurulumu, DB engine/session yönetimi, Postgres bağlantısı; ilk (boş) migration.
+- [x] T2: SQLAlchemy 2 + Alembic kurulumu, DB engine/session yönetimi, Postgres bağlantısı; ilk (boş) migration.
+  - `backend/app/db.py` (engine/SessionLocal/Base/get_db), `backend/alembic/` (env.py app metadata'sını okuyor, script.py.mako modern tip sözdizimiyle), `016ecf2912ae_baseline` boş migration. `backend/tests/conftest.py` her test session'ında `alembic upgrade head`'i gerçek bir test Postgres'ine (`gatewayhub_test`) karşı çalıştırıyor — testler SQLite/mock değil gerçek Postgres kullanıyor (PRD Postgres'i sabit teknoloji sayıyor).
 - [ ] T3: Canonical model — `users` tablosu (id, email, password_hash, role, must_change_password) + migration + testler.
 - [ ] T4: Canonical model — `tasks` tablosu (PRD Bölüm 7 taslağı: id, provider, provider_task_id, parent_id, title, description, status, status_category, assignees, priority, due_date, tags, provider_raw, provider_updated_at, last_synced_at, sync_version, write_state) + migration + testler.
 - [ ] T5: Canonical model — `comments` tablosu (task_id, author, body, provider_comment_id, created_at) + migration + testler.
@@ -30,5 +31,6 @@ durumundaki en üstteki task tamamlanır.
 - [ ] T24: Frontend — Keyboard-first navigasyon (j/k, statü/assignee hızlı değişim, command palette Cmd/Ctrl+K).
 - [ ] T25: Frontend — Settings sayfası (provider token, sync kapsamı, poll aralığı, kullanıcı yönetimi UI).
 - [ ] T26: Docker Compose — tam entegrasyon (app: API+UI static serve, worker, postgres, redis) tek komutla ayağa kalkma; Dockerfile'lar.
-- [ ] T27: README finalize (≤10 satır kurulum), Faz 0 kapsam kontrolü.
-- [ ] T28: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
+- [ ] T27: `setup.sh` — kullanıcı isteği: makineye indirip tek script ile kurulum (`.env` yoksa `.env.example`'dan oluştur + rastgele `SECRET_KEY` üret + `docker compose up -d --build` + hazır olduğunda panel URL'ini yazdır). README'deki `cp .env.example .env && docker compose up` akışının yerini almaz, ona ek pratik bir kısayoldur.
+- [ ] T28: README finalize (≤10 satır kurulum, `setup.sh` seçeneğine referans), Faz 0 kapsam kontrolü.
+- [ ] T29: Kalite geçişi — ruff+mypy+tsc temiz, coverage ≥%80 core+provider, tüm testler yeşil; Faz 0 başarı kriterleri kontrolü.
