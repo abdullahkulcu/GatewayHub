@@ -43,3 +43,51 @@ export interface ListOption {
   id: string
   name: string | null
 }
+
+export type UserRole = 'admin' | 'member'
+
+export interface Me {
+  id: string
+  email: string
+  role: UserRole
+  must_change_password: boolean
+}
+
+export interface UserAccount {
+  id: string
+  email: string
+  role: UserRole
+  must_change_password: boolean
+  created_at: string
+}
+
+export interface SyncScope {
+  workspace_id: string
+  list_ids: string[]
+}
+
+export interface SettingsOut {
+  clickup_token_configured: boolean
+  clickup_token_masked: string | null
+  poll_interval_seconds: number
+  sync_scope: SyncScope | null
+}
+
+export interface SyncStatus {
+  last_synced_at: string | null
+  next_poll_at: string | null
+  last_sync_error: string | null
+  poll_interval_seconds: number
+}
+
+export interface ClickUpWorkspace {
+  id: string
+  name: string
+}
+
+export interface ClickUpListOption {
+  id: string
+  name: string
+  space_name: string | null
+  folder_name: string | null
+}

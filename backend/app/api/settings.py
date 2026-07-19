@@ -1,6 +1,8 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, TypeVar
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -11,6 +13,22 @@ from app.crypto import mask_secret
 from app.db import get_db
 from app.models.user import User
 from providers.clickup import ClickUpClient
+
+T = TypeVar("T")
+
+
+def _call_clickup(fn: Callable[[], T]) -> T:
+    """Runs a live ClickUp call, turning any network/HTTP-level failure
+    (unreachable, timeout, rate-limited, ClickUp outage) into a clean 502
+    instead of a raw 500 — this is user-facing Settings UI, not the worker's
+    resilient poll loop."""
+    try:
+        return fn()
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't reach ClickUp. Check your connection and try again.",
+        ) from exc
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -105,7 +123,7 @@ def set_clickup_token(
     _admin: User = Depends(require_admin),
 ) -> SettingsOut:
     with ClickUpClient(payload.token) as client:
-        if not client.verify_token():
+        if not _call_clickup(client.verify_token):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="ClickUp rejected the provided token",
@@ -145,7 +163,7 @@ def list_clickup_workspaces(
 ) -> list[dict[str, Any]]:
     token = _require_configured_token(db)
     with ClickUpClient(token) as client:
-        return client.list_workspaces()
+        return _call_clickup(client.list_workspaces)
 
 
 @router.get("/clickup/workspaces/{workspace_id}/lists")
@@ -156,7 +174,7 @@ def list_clickup_lists(
 ) -> list[dict[str, Any]]:
     token = _require_configured_token(db)
     with ClickUpClient(token) as client:
-        return _flatten_lists_for_workspace(client, workspace_id)
+        return _call_clickup(lambda: _flatten_lists_for_workspace(client, workspace_id))
 
 
 @router.get("/sync-status", response_model=SyncStatusOut)

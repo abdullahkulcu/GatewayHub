@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../shared/useAuth'
+import { useMe } from '../shared/queries'
 import { CommandPalette } from './CommandPalette'
 
 function navClasses({ isActive }: { isActive: boolean }): string {
@@ -9,6 +10,8 @@ function navClasses({ isActive }: { isActive: boolean }): string {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { logout } = useAuth()
+  const meQuery = useMe()
+  const isAdmin = meQuery.data?.role === 'admin'
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -22,6 +25,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink to="/board" className={navClasses}>
               Board
             </NavLink>
+            {isAdmin && (
+              <NavLink to="/settings" className={navClasses}>
+                Settings
+              </NavLink>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">

@@ -172,6 +172,28 @@ def test_list_clickup_workspaces(client: TestClient, db_session: Session) -> Non
     assert response.json() == [{"id": "ws1", "name": "Acme"}]
 
 
+def test_list_clickup_workspaces_returns_502_when_clickup_unreachable(
+    client: TestClient, db_session: Session
+) -> None:
+    """Regression test: a network-level failure reaching ClickUp (proxy
+    blocked, DNS, timeout, ClickUp outage) must surface as a clean 502, not
+    an unhandled 500 — this is user-facing Settings UI, unlike the worker's
+    resilient poll loop (see _call_clickup in app/api/settings.py)."""
+    _create_admin(db_session)
+    headers = _auth_headers(client)
+    with respx.mock(base_url=CLICKUP_API_BASE) as mock:
+        mock.get("/team").mock(return_value=httpx.Response(200, json={"teams": []}))
+        client.put("/api/settings/clickup-token", json={"token": "pk_abc"}, headers=headers)
+
+        mock.get("/team/ws1/space", params={"archived": "false"}).mock(
+            side_effect=httpx.ConnectError("connection refused")
+        )
+
+        response = client.get("/api/settings/clickup/workspaces/ws1/lists", headers=headers)
+
+    assert response.status_code == 502
+
+
 def test_list_clickup_lists_flattens_folders_and_folderless(
     client: TestClient, db_session: Session
 ) -> None:
